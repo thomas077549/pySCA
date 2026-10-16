@@ -792,6 +792,7 @@ def compute_position_weights(alg: np.ndarray, seqw: Union[int, np.ndarray] = 1,
 # Backward compatibility alias
 posWeights = compute_position_weights
 
+#this is a test edit to scaTools_v2.py
 
 def sequence_similarity(alg: np.ndarray) -> np.ndarray:
     """

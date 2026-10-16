@@ -55,6 +55,15 @@ from scipy.stats import kurtosis, spearmanr
 from pysca import scaTools as sca
 
 
+class NumpyCompatUnpickler(pickle.Unpickler):
+    """Read NumPy 2 pickles in the project's NumPy 1 SCA environment."""
+
+    def find_class(self, module, name):
+        if module.startswith("numpy._core"):
+            module = "numpy.core" + module[len("numpy._core"):]
+        return super().find_class(module, name)
+
+
 def _mat_sanitize(x: Any) -> Any:
     """Make nested structures savemat-friendly.
     
@@ -208,18 +217,20 @@ def setup_logger(log_path: Optional[str], verbose: bool, quiet: bool) -> logging
 def load_db(path: Path) -> Dict[str, Any]:
     if path.suffix == ".gz":
         with gzip.open(path, "rb") as f:
-            return pickle.load(f)
+            return NumpyCompatUnpickler(f).load()
     with open(path, "rb") as f:
-        return pickle.load(f)
+        return NumpyCompatUnpickler(f).load()
 
 
 def save_db(path: Path, db: Dict[str, Any]) -> None:
     if path.suffix == ".gz":
         with gzip.open(path, "wb") as f:
-            pickle.dump(db, f, protocol=pickle.HIGHEST_PROTOCOL)
+            # Protocol 4 keeps databases readable by the Python 3.7 SCA environment.
+            pickle.dump(db, f, protocol=4)
     else:
         with open(path, "wb") as f:
-            pickle.dump(db, f, protocol=pickle.HIGHEST_PROTOCOL)
+            # Protocol 4 keeps databases readable by the Python 3.7 SCA environment.
+            pickle.dump(db, f, protocol=4)
 
 
 def prepare_matlab_db(db: Dict[str, Any]) -> Dict[str, Any]:
@@ -289,8 +300,6 @@ def main(argv: Optional[list[str]] = None) -> int:
                     help="Number of independent components to compute via ICA (must be >= 2 and <= kpos). Default: kpos")
     ap.add_argument("-p", "--cutoff", dest="cutoff", type=float, default=0.95,
                     help="Cutoff for selecting significant positions per IC (default 0.95)")
-    ap.add_argument("--kmax-cap", type=int, default=10,
-                    help="Safety cap on kpos if automatic selection returns larger (default 10)")
     ap.add_argument("--float32", action="store_true", default=False,
                     help="Store heavy arrays as float32")
     ap.add_argument("-m", "--matlab", action="store_true", dest="matfile", default=False)
@@ -372,15 +381,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         kpos_was_auto = False
     
     # Apply safety cap
-    kpos_before_cap = kpos
-    kpos = min(kpos, int(args.kmax_cap), Vfull.shape[1])
+    kpos = min(kpos, Vfull.shape[1])
     
     # Clean log output
     logger.info("kpos_auto (auto-estimated): %d" % kpos_auto)
     if kpos_user > 0:
         logger.info("kpos_user (user-specified): %d" % kpos_user)
-    if kpos < kpos_before_cap:
-        logger.info("kpos capped from %d to %d (--kmax-cap=%d)" % (kpos_before_cap, kpos, args.kmax_cap))
     logger.info("Using kpos=%d eigenmodes %s" % (kpos, "(auto-selected)" if kpos_was_auto else "(user-specified)"))
 
     V = Vfull[:, :kpos]

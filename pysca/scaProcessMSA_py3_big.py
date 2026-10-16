@@ -882,7 +882,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_db = Path("Outputs") / f"{base}.db.gz"
     import pickle
     with gzip.open(out_db, "wb") as f:
-        pickle.dump(db, f, protocol=pickle.HIGHEST_PROTOCOL)
+        # Protocol 4 keeps databases readable by the Python 3.7 SCA environment.
+        pickle.dump(db, f, protocol=4)
     logger.info(f"Wrote database: {out_db}")
     logger.info("=== Done ===")
     return 0

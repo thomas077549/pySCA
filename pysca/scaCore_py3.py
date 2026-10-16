@@ -91,10 +91,12 @@ def load_db(path: Path) -> Dict[str, Any]:
 def save_db(path: Path, db: Dict[str, Any]) -> None:
     if path.suffix == ".gz":
         with gzip.open(path, "wb") as f:
-            pickle.dump(db, f, protocol=pickle.HIGHEST_PROTOCOL)
+            # Protocol 4 keeps databases readable by the Python 3.7 SCA environment.
+            pickle.dump(db, f, protocol=4)
     else:
         with open(path, "wb") as f:
-            pickle.dump(db, f, protocol=pickle.HIGHEST_PROTOCOL)
+            # Protocol 4 keeps databases readable by the Python 3.7 SCA environment.
+            pickle.dump(db, f, protocol=4)
 
 
 def _mat_sanitize(x: Any) -> Any:

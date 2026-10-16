@@ -951,7 +951,9 @@ def alg2bin(alg, N_aa=20):
     aa = a - 1
     mask = (a > 0) & (a <= N_aa)
     cols = pos[mask] * N_aa + aa[mask]
-    data = np.ones(cols.shape[0], dtype=np.uint8)
+    # Use floating point ones so sparse dot products cannot overflow for
+    # high-identity alignments with more than 255 retained positions.
+    data = np.ones(cols.shape[0], dtype=np.float32)
 
     Abin = scipy.sparse.csr_matrix((data, (rows[mask], cols)), shape=(N_seq, N_aa * N_pos))
     return Abin
@@ -977,7 +979,9 @@ def alg2binss(alg, N_aa=20):
     data_indices = col_indices_alg * N_aa + (alg[row_indices, col_indices_alg] - 1)
     
     # Create sparse matrix directly
-    data = np.ones(len(row_indices), dtype=np.uint8)
+    # Use floating point ones so sparse dot products cannot overflow for
+    # high-identity alignments with more than 255 retained positions.
+    data = np.ones(len(row_indices), dtype=np.float32)
     Abin = sparsify((data, (row_indices, data_indices)), 
                     shape=(N_seq, N_pos * N_aa))
     return Abin
@@ -1400,6 +1404,7 @@ def svdss(X, k=6):
       u, s ,v = svdss(X, k=6)
     """
 
+    X = X.astype(float)
     u, s, vt = scipy.sparse.linalg.svds(X, k)
     idx = (-s).argsort()
     s = s[idx]
